@@ -19,6 +19,23 @@ import streamlit as st
 
 st.set_page_config(page_title="TTRPG Studio", page_icon="🧙", layout="wide")
 
+OPENROUTER_MODEL_OPTIONS = [
+    "openai/gpt-4o-mini",
+    "stepfun/step-3.5-flash:free",
+    "arcee-ai/trinity-large-preview:free",
+    "liquid/lfm-2.5-1.2b-thinking:free",
+    "nvidia/nemotron-3-nano-30b-a3b:free",
+    "nvidia/nemotron-nano-9b-v2:free",
+    "arcee-ai/trinity-mini:free",
+    "qwen/qwen3-vl-30b-a3b-thinking",
+    "qwen/qwen3-vl-235b-a22b-thinking",
+    "z-ai/glm-4.5-air:free",
+    "google/gemma-3n-e2b-it:free",
+    "deepseek/deepseek-r1-0528:free",
+    "qwen/qwen3-4b:free",
+    "meta-llama/llama-3.3-70b-instruct:free",
+]
+
 
 def ensure_state() -> None:
     defaults: dict[str, Any] = {
@@ -251,14 +268,18 @@ with chat_tab:
         ]
 
         try:
-            with st.chat_message("assistant"):
-                response = st.write_stream(
-                    stream_chat_response(
-                        api_key=api_key,
-                        base_url=base_url,
-                        model=model,
-                        messages=request_messages,
-                        temperature=temperature,
+            with transcript:
+                with st.chat_message("user"):
+                    st.markdown(user_prompt)
+                with st.chat_message("assistant"):
+                    response = st.write_stream(
+                        stream_chat_response(
+                            api_key=api_key,
+                            base_url=base_url,
+                            model=model,
+                            messages=request_messages,
+                            temperature=temperature,
+                        )
                     )
                 )
             st.session_state.messages.append({"role": "assistant", "content": response})
@@ -438,7 +459,7 @@ with prompt_tab:
     if st.button("Save prompt to vault"):
         st.session_state.prompt_vault.append(
             {
-                "prompt": generated_prompt,
+                "prompt": preview,
                 "subject": subject,
                 "style": style,
                 "created_at": datetime.now(timezone.utc).isoformat(),
