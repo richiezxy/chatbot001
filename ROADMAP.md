@@ -1,5 +1,7 @@
 # Product Roadmap: TTRPG Studio
 
+> Detailed functional specification lives in `PRODUCT_SPEC.md`. This roadmap is delivery sequencing and milestones.
+
 ## North Star
 Build a **t3.chat-like operating workspace** for TTRPG teams that can run from solo creator mode to enterprise-grade multi-team production.
 

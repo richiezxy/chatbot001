@@ -47,6 +47,8 @@ A Streamlit chatbot with a cleaner interface and support for both **OpenAI** and
 
 See `ROADMAP.md` for phased evolution into a robust daily-use platform.
 
+For full implementation detail (World Bible, Prompt Forge engine, chat orchestration, and enterprise requirements), see `PRODUCT_SPEC.md`.
+
 
 ## Compatibility note
 
