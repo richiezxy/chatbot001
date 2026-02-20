@@ -1,19 +1,48 @@
-# 💬 Chatbot template
+# 🧙 TTRPG Studio (OpenAI + OpenRouter)
 
-A simple Streamlit app that shows how to build a chatbot using OpenAI's GPT-3.5.
+A Streamlit project moving toward a **t3.chat-style** daily workspace for tabletop worldbuilding, image prompt design, and campaign operations.
 
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://chatbot-template.streamlit.app/)
+## What this build now includes
 
-### How to run it on your own machine
+- Multi-provider chat: **OpenAI** and **OpenRouter**
+- TTRPG-tuned assistant modes (world builder, narrative designer, encounter architect)
+- World Bible note management for lore continuity
+- Image Prompt Forge + prompt vault storage
+- Admin controls for JSON export/import and audit logging
+- Optional visual theme: **"TechnoDruid 20%"**
 
-1. Install the requirements
+## Run locally
 
+1. Install dependencies:
+
+   ```bash
+   pip install -r requirements.txt
    ```
-   $ pip install -r requirements.txt
+
+2. Start app:
+
+   ```bash
+   streamlit run streamlit_app.py
    ```
 
-2. Run the app
+3. In sidebar:
+   - choose provider
+   - enter API key
+   - tune model + temperature + TTRPG mode
 
-   ```
-   $ streamlit run streamlit_app.py
-   ```
+## Next milestones
+
+See `ROADMAP.md` for phased evolution into a robust daily-use platform.
+
+
+## Compatibility note
+
+This app supports both modern and legacy OpenAI Python SDK styles at runtime.
+If your environment has an older `openai` package (that does not expose `OpenAI`),
+the app automatically falls back to the legacy `openai.ChatCompletion` flow.
+
+Recommended upgrade for best long-term support:
+
+```bash
+pip install --upgrade openai
+```
