@@ -28,6 +28,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from textwrap import dedent
 from typing import Any, Dict, Iterable, List, Optional, Tuple
+from uuid import uuid4
 
 import openai
 import streamlit as st
@@ -76,6 +77,13 @@ def ensure_state() -> None:
         "prompt_vault": [],
         "audit_log": [],
         "project_blueprints": [],
+        # Chat-derived structured context objects used to bridge tabs.
+        "chat_artifacts": [],
+        "latest_extracted_context": {},
+        # Draft seed dictionaries for cross-tab "apply from chat" workflows.
+        "foundry_draft_overrides": {},
+        "prompt_forge_draft_overrides": {},
+        "world_bible_draft_overrides": {},
         # Knowledge graph caches
         "kg_nodes": {},  # name -> {"type": str, "count": int}
         "kg_edges": {},  # (a,b) -> weight
@@ -114,6 +122,66 @@ def log_event(event: str) -> None:
 
 def clamp(n: float, lo: float, hi: float) -> float:
     return max(lo, min(hi, n))
+
+
+def pick_option(preferred: str, options: List[str], fallback: str) -> str:
+    """Return preferred option when valid, else fallback."""
+    return preferred if preferred in options else fallback
+
+
+def extract_context_from_chat_text(text: str) -> Dict[str, Any]:
+    """Best-effort extraction of structured campaign data from assistant output.
+
+    NEXT: move this heuristic parser behind a provider-backed structured extraction call
+    with JSON schema validation and confidence scoring.
+    """
+    cleaned = re.sub(r"`{3}.*?`{3}", "", text, flags=re.DOTALL)
+    lines = [ln.strip(" -#*\t") for ln in cleaned.splitlines() if ln.strip()]
+
+    title = ""
+    for ln in lines:
+        if 5 <= len(ln) <= 80:
+            title = ln
+            break
+
+    proper_terms = PROPER_PHRASE_RE.findall(cleaned)
+    unique_terms: List[str] = []
+    seen = set()
+    for term in proper_terms:
+        t = normalize_entity(term)
+        if len(t) < 4 or t in seen:
+            continue
+        seen.add(t)
+        unique_terms.append(t)
+
+    factions = [t for t in unique_terms if any(k in t.lower() for k in ["order", "guild", "court", "synod", "clan"])][:5]
+    locations = [t for t in unique_terms if any(k in t.lower() for k in ["city", "vale", "keep", "forest", "isle", "ruins"])][:5]
+
+    sentence_chunks = [s.strip() for s in re.split(r"(?<=[.!?])\s+", cleaned) if s.strip()]
+    premise = sentence_chunks[0][:280] if sentence_chunks else cleaned[:280]
+
+    tags = ["chat-derived", "structured-context"]
+    if factions:
+        tags.append("factions")
+    if locations:
+        tags.append("locations")
+
+    return {
+        "project_name": title[:60] or "Chat-Derived Campaign",
+        "premise": premise,
+        "factions": factions,
+        "locations": locations,
+        "themes": ["Discovery", "Corruption"] if "corruption" in cleaned.lower() else ["Legacy", "Discovery"],
+        "genres": ["Dark Fantasy"] if "dark" in cleaned.lower() else ["High Fantasy"],
+        "subject": title[:90] or "Campaign concept art",
+        "style": "Cinematic fantasy",
+        "mood": "Awe-inspiring" if "awe" in cleaned.lower() else "Threatening",
+        "lighting": "Stormlight flashes" if "storm" in cleaned.lower() else "Moonlit bioluminescence",
+        "negative": "blurry, low detail, text artifacts, watermark",
+        "world_entry_title": f"Chat Canon: {title[:40] or 'Campaign Note'}",
+        "world_entry_tags": tags,
+        "world_entry_content": cleaned[:2200],
+    }
 
 
 # ============================================================
@@ -694,6 +762,79 @@ with chat_tab:
             log_event(f"Request failed: {exc}")
             st.error(f"Request failed: {exc}")
 
+    st.divider()
+    st.markdown("### 🧩 Structured Context Bridge")
+    st.caption("Extract key fields from assistant output and push them into Foundry, World Bible, or Prompt Forge drafts.")
+
+    c_extract, c_foundry, c_world, c_prompt = st.columns([1.2, 1, 1, 1])
+    if c_extract.button("Extract from last assistant reply", use_container_width=True):
+        last_assistant = next((m for m in reversed(st.session_state.messages) if m.get("role") == "assistant"), None)
+        if not last_assistant:
+            st.warning("No assistant reply available yet.")
+        else:
+            extracted = extract_context_from_chat_text(last_assistant.get("content", ""))
+            artifact = {
+                "id": str(uuid4()),
+                "created_at": now_iso(),
+                "source": "last_assistant_reply",
+                "context": extracted,
+            }
+            st.session_state.chat_artifacts.append(artifact)
+            st.session_state.latest_extracted_context = extracted
+            log_event("Structured context extracted from chat")
+            st.success("Context extracted. Review below, then apply to a workspace tab.")
+
+    latest_context = st.session_state.latest_extracted_context or {}
+    if latest_context:
+        c_foundry.button(
+            "Apply → Foundry",
+            use_container_width=True,
+            on_click=lambda: st.session_state.update(
+                {
+                    "foundry_draft_overrides": {
+                        "project_name": latest_context.get("project_name", ""),
+                        "themes": latest_context.get("themes", []),
+                        "genres": latest_context.get("genres", []),
+                        "premise": latest_context.get("premise", ""),
+                        # NEXT: fill advanced Foundry fields (threat horizon, faction clocks)
+                        # using schema-enforced extraction rather than static defaults.
+                    }
+                }
+            ),
+        )
+        c_world.button(
+            "Apply → World Bible",
+            use_container_width=True,
+            on_click=lambda: st.session_state.update(
+                {
+                    "world_bible_draft_overrides": {
+                        "title": latest_context.get("world_entry_title", "Chat Canon Note"),
+                        "tags": ", ".join(latest_context.get("world_entry_tags", [])),
+                        "content": latest_context.get("world_entry_content", ""),
+                    }
+                }
+            ),
+        )
+        c_prompt.button(
+            "Apply → Prompt Forge",
+            use_container_width=True,
+            on_click=lambda: st.session_state.update(
+                {
+                    "prompt_forge_draft_overrides": {
+                        "subject": latest_context.get("subject", "Campaign concept art"),
+                        "style": latest_context.get("style", "Cinematic fantasy"),
+                        "mood": latest_context.get("mood", "Awe-inspiring"),
+                        "lighting": latest_context.get("lighting", "Moonlit bioluminescence"),
+                        "negative": latest_context.get("negative", "blurry, low detail, text artifacts, watermark"),
+                    }
+                }
+            ),
+        )
+
+    if latest_context:
+        with st.expander("Latest extracted context", expanded=False):
+            st.json(latest_context)
+
 
 # ============================================================
 # Project Foundry Tab
@@ -702,8 +843,10 @@ with foundry_tab:
     st.subheader("Project Foundry — Build a TTRPG/VTT Project From Scratch")
     st.caption("Menus, selectables, dials, and toggles for rapid campaign bootstrapping.")
 
+    foundry_seed = st.session_state.foundry_draft_overrides or {}
+
     a, b, c = st.columns(3)
-    project_name = a.text_input("Project name", "Ashes of the Verdant Crown")
+    project_name = a.text_input("Project name", foundry_seed.get("project_name", "Ashes of the Verdant Crown"))
     game_system = b.selectbox("Game system", ["D&D 5e", "Pathfinder 2e", "Blades in the Dark", "Mothership", "Custom"])
     vtt_platform = c.selectbox("VTT platform", ["Foundry", "Roll20", "Owlbear Rodeo", "Fantasy Grounds", "Alchemy"])
 
@@ -712,15 +855,18 @@ with foundry_tab:
     campaign_scope = e.selectbox("Campaign scope", ["One-shot", "Mini-campaign", "Long campaign", "Open table"])
     session_length = f.select_slider("Session length", options=[2, 3, 4, 5, 6], value=4)
 
+    genre_options = ["High Fantasy", "Dark Fantasy", "Cosmic Horror", "Post-Apocalyptic", "Steampunk", "Mythic", "Political Intrigue"]
+    theme_options = ["Legacy", "Survival", "Corruption", "Rebellion", "Discovery", "Faith", "Forbidden Knowledge"]
+
     genres = st.multiselect(
         "Genre blend",
-        ["High Fantasy", "Dark Fantasy", "Cosmic Horror", "Post-Apocalyptic", "Steampunk", "Mythic", "Political Intrigue"],
-        default=["Dark Fantasy", "Political Intrigue"],
+        genre_options,
+        default=[g for g in foundry_seed.get("genres", ["Dark Fantasy", "Political Intrigue"]) if g in genre_options],
     )
     themes = st.multiselect(
         "Themes",
-        ["Legacy", "Survival", "Corruption", "Rebellion", "Discovery", "Faith", "Forbidden Knowledge"],
-        default=["Legacy", "Corruption", "Discovery"],
+        theme_options,
+        default=[t for t in foundry_seed.get("themes", ["Legacy", "Corruption", "Discovery"]) if t in theme_options],
     )
 
     g1, g2, g3 = st.columns(3)
@@ -754,7 +900,10 @@ with foundry_tab:
     signature_faction = k2.text_input("Signature faction", "The Emerald Synod")
     premise = st.text_area(
         "Core premise",
-        value="The old druidic engine beneath the marsh awakens, and every faction wants to claim its weather-shaping power.",
+        value=foundry_seed.get(
+            "premise",
+            "The old druidic engine beneath the marsh awakens, and every faction wants to claim its weather-shaping power.",
+        ),
         height=90,
     )
 
@@ -868,16 +1017,18 @@ with foundry_tab:
 # ============================================================
 with world_tab:
     st.subheader("World Bible + Knowledge Graph")
+    world_seed = st.session_state.world_bible_draft_overrides or {}
     st.caption("Canon notes + a lightweight entity graph for fast recall and continuity checks.")
 
     left, right = st.columns([1, 2])
 
     with left:
         with st.form("world_bible_form", clear_on_submit=True):
-            entry_title = st.text_input("Entry title")
-            entry_tags = st.text_input("Tags (comma-separated)")
+            entry_title = st.text_input("Entry title", value=world_seed.get("title", ""))
+            entry_tags = st.text_input("Tags (comma-separated)", value=world_seed.get("tags", ""))
             entry_content = st.text_area(
                 "Lore content",
+                value=world_seed.get("content", ""),
                 height=180,
                 help="Tip: Use [[Entity Name]] to explicitly link entities for the knowledge graph.",
             )
@@ -975,18 +1126,35 @@ with world_tab:
 # ============================================================
 with prompt_tab:
     st.subheader("Prompt Forge")
+    prompt_seed = st.session_state.prompt_forge_draft_overrides or {}
+
+    style_options = ["Cinematic fantasy", "Oil painting", "Dark matte concept", "Illustrative map-art"]
+    lighting_options = ["Moonlit bioluminescence", "Golden hour haze", "Stormlight flashes", "Torchlit gloom"]
+    mood_options = ["Sacred", "Threatening", "Melancholic", "Awe-inspiring"]
 
     col_a, col_b, col_c = st.columns(3)
-    subject = col_a.text_input("Subject", "Ancient druid citadel over flooded ruins")
-    style = col_b.selectbox("Style", ["Cinematic fantasy", "Oil painting", "Dark matte concept", "Illustrative map-art"])
-    lighting = col_c.selectbox("Lighting", ["Moonlit bioluminescence", "Golden hour haze", "Stormlight flashes", "Torchlit gloom"])
+    subject = col_a.text_input("Subject", prompt_seed.get("subject", "Ancient druid citadel over flooded ruins"))
+    style = col_b.selectbox(
+        "Style",
+        style_options,
+        index=style_options.index(pick_option(prompt_seed.get("style", "Cinematic fantasy"), style_options, "Cinematic fantasy")),
+    )
+    lighting = col_c.selectbox(
+        "Lighting",
+        lighting_options,
+        index=lighting_options.index(pick_option(prompt_seed.get("lighting", "Moonlit bioluminescence"), lighting_options, "Moonlit bioluminescence")),
+    )
 
     col_d, col_e, col_f = st.columns(3)
-    mood = col_d.selectbox("Mood", ["Sacred", "Threatening", "Melancholic", "Awe-inspiring"])
+    mood = col_d.selectbox(
+        "Mood",
+        mood_options,
+        index=mood_options.index(pick_option(prompt_seed.get("mood", "Sacred"), mood_options, "Sacred")),
+    )
     camera = col_e.selectbox("Framing", ["Wide establishing", "Character close-up", "Bird's-eye tactical", "Isometric angle"])
     detail_dial = col_f.slider("Detail dial", 1, 10, 8)
 
-    negative = st.text_input("Negative prompt", "blurry, low detail, text artifacts, watermark")
+    negative = st.text_input("Negative prompt", prompt_seed.get("negative", "blurry, low detail, text artifacts, watermark"))
     generated_prompt = (
         f"{subject}. Style: {style}. Lighting: {lighting}. Mood: {mood}. "
         f"Framing: {camera}. Detail level {detail_dial}/10. Negative prompt: {negative}."
@@ -1026,6 +1194,11 @@ with admin_tab:
         "world_bible": st.session_state.world_bible,
         "prompt_vault": st.session_state.prompt_vault,
         "project_blueprints": st.session_state.project_blueprints,
+        "chat_artifacts": st.session_state.chat_artifacts,
+        "latest_extracted_context": st.session_state.latest_extracted_context,
+        "foundry_draft_overrides": st.session_state.foundry_draft_overrides,
+        "world_bible_draft_overrides": st.session_state.world_bible_draft_overrides,
+        "prompt_forge_draft_overrides": st.session_state.prompt_forge_draft_overrides,
         "audit_log": st.session_state.audit_log,
         "usage_total": st.session_state.usage_total,
     }
@@ -1043,8 +1216,11 @@ with admin_tab:
     if uploaded is not None:
         try:
             imported = json.loads(uploaded.read().decode("utf-8"))
-            for key in ["messages", "world_bible", "prompt_vault", "project_blueprints", "audit_log"]:
+            for key in ["messages", "world_bible", "prompt_vault", "project_blueprints", "chat_artifacts", "audit_log"]:
                 if key in imported and isinstance(imported[key], list):
+                    st.session_state[key] = imported[key]
+            for key in ["latest_extracted_context", "foundry_draft_overrides", "world_bible_draft_overrides", "prompt_forge_draft_overrides"]:
+                if key in imported and isinstance(imported[key], dict):
                     st.session_state[key] = imported[key]
             if "usage_total" in imported and isinstance(imported["usage_total"], dict):
                 st.session_state.usage_total = imported["usage_total"]
