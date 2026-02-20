@@ -1,54 +1,85 @@
 # Product Roadmap: TTRPG Studio
 
+> Detailed functional specification lives in `PRODUCT_SPEC.md`. This roadmap is delivery sequencing and milestones.
+
 ## North Star
-Build a **t3.chat-like** interface specialized for TTRPG creators: worldbuilding, campaign planning, image prompt workflows, and dependable everyday usage.
+Build a **t3.chat-like operating workspace** for TTRPG teams that can run from solo creator mode to enterprise-grade multi-team production.
 
-## Phase 1 — Foundation Hardening (near term)
+## Guiding principles
+- **Chat-first orchestration**: every output can become structured data that feeds Foundry, World Bible, and Prompt Forge.
+- **Human-in-the-loop reliability**: generated data is reviewable, editable, and traceable.
+- **Enterprise trust posture**: security, observability, governance, and auditability are first-class.
 
-- Stabilize current multi-provider chat UX (OpenAI + OpenRouter)
-- Extract app into modules (`ui/`, `services/`, `storage/`, `domain/`)
-- Add typed config layer for providers/models
-- Add regression tests for prompt-building and import/export behavior
-- Add robust error taxonomy (auth errors, quota, network, model not found)
+## Phase 1 — Workflow Integration Foundation (0-6 weeks)
+- Add structured extraction pipeline from assistant replies into reusable context objects.
+- Add "apply to" bridges so chat output can prefill:
+  - Project Foundry fields
+  - World Bible drafts
+  - Prompt Forge prompt fields
+- Introduce shared context-pack assembly for generation calls.
+- Add field-level confidence indicators and user correction before save.
+- Expand regression checks around prompt building and import/export behavior.
 
-## Phase 2 — Data + Admin Operations
+**Exit criteria**
+- Users can go from one chat answer to a saved project blueprint + world entry + prompt vault item in under 60 seconds.
 
-- Add authentication (single-user local first, then team auth)
-- Add role-based access control (admin/editor/viewer)
-- Migrate from session state to database persistence (SQLite -> Postgres)
-- Build admin dashboard: usage analytics, logs, workspace backups
-- Add project-level settings and environment profiles
+## Phase 2 — Domain Model + Memory (6-12 weeks)
+- Formalize canonical entities (factions, NPCs, locations, events, timelines, items).
+- Add entity extraction with source citation links back to chat/world entries.
+- Add retrieval layer (hybrid keyword + vector + graph neighborhood).
+- Add conflict detection (lore contradictions, duplicate entities, timeline drift).
+- Introduce campaign workspaces with persistent IDs (beyond session state).
 
-## Phase 3 — TTRPG Domain Intelligence
+**Exit criteria**
+- Model outputs can cite source memory and pass basic continuity checks before publishing.
 
-- Canonical world model:
-  - factions
-  - NPCs
-  - locations
-  - timelines
-  - events
-- Consistency checks (detect lore conflicts)
-- Session prep assistants (encounters, hooks, pacing plans)
-- Campaign memory retrieval with citations to source notes
+## Phase 3 — Platform & Data Architecture (12-20 weeks)
+- Refactor single-file app into modular architecture:
+  - `ui/`, `services/`, `domain/`, `storage/`, `observability/`
+- Add persistent storage migration path:
+  - local SQLite (dev) -> managed Postgres (prod)
+- Add async job layer for long-running generations and bulk exports.
+- Add versioned data contracts (schema migrations + backward compatibility checks).
+- Introduce cache strategy for retrieval, token spend computations, and prompt templates.
 
-## Phase 4 — Image Workflow Expansion
+**Exit criteria**
+- Zero data loss during migration rehearsal; deterministic rollback path documented.
 
-- Keep current prompt vault and add metadata tagging/search
-- Integrate image generation providers (OpenAI, OpenRouter-routed models, others)
-- Add batch generation + versioned prompt experimentation
-- Store image assets with links to campaign entities
+## Phase 4 — Enterprise Security & Governance (20-30 weeks)
+- Add authentication and SSO (OIDC/SAML options).
+- Add RBAC/ABAC roles (admin, editor, reviewer, read-only).
+- Encrypt secrets and sensitive campaign data at rest and in transit.
+- Add tenant/workspace isolation and environment profiles.
+- Add immutable audit events for content lifecycle actions.
+- Add policy controls for model/provider usage and prompt redaction.
 
-## Phase 5 — Daily-use Productivity Layer
+**Exit criteria**
+- Security review and threat model completed with remediation tracking.
 
-- Recurring reminders, checklist templates, and session agendas
-- "Today" dashboard (active campaign, next tasks, latest lore changes)
-- Offline-first drafting mode + sync
-- Notification hooks (email/Discord/webhooks)
+## Phase 5 — Enterprise Operations & Reliability (30-40 weeks)
+- Add centralized telemetry: latency, error taxonomies, token spend, provider health.
+- Add SLOs/SLAs and alerting for degraded model routes.
+- Add backup/restore, disaster recovery, and retention policies.
+- Add feature flags and staged rollouts (dev/stage/prod).
+- Add incident playbooks and operational dashboards.
 
-## Quality bars for every phase
+**Exit criteria**
+- Meets target SLOs for generation success and workspace load times.
 
-- Clear, commented code
-- Tests for core workflows
-- Migration-safe storage changes
-- Observability: spend, latency, reliability
-- Security reviews for any auth or secrets features
+## Phase 6 — Advanced Team Intelligence (40+ weeks)
+- Multi-agent orchestration for campaign pipelines (lore QA, encounter QA, art direction QA).
+- Prompt Forge evolution into reusable style systems and branded content packs.
+- Workflow automation (publish-ready packets, weekly recaps, GM prep digests).
+- Marketplace-style template packs and org-level shared libraries.
+- API + webhook ecosystem for external VTT and content pipeline integrations.
+
+**Exit criteria**
+- Teams can automate recurring prep workflows and integrate into external systems.
+
+## Cross-cutting quality bars (every phase)
+- Strong typing and schema validation around generated artifacts.
+- Test coverage for critical workflows and data migrations.
+- Backward-compatible exports/imports and reproducible environments.
+- Accessibility and UX consistency across tabs.
+- Cost governance guardrails with budget alerts.
+- Documentation for developers, operators, and end users.

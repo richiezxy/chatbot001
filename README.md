@@ -15,6 +15,7 @@ A Streamlit chatbot with a cleaner interface and support for both **OpenAI** and
 - Streaming assistant responses
 - Persistent chat history in session state
 - One-click clear conversation button
+- Chat-to-workspace bridge: extract structured context from assistant replies and prefill Project Foundry, World Bible, and Prompt Forge drafts
 
 - Multi-provider chat: **OpenAI** and **OpenRouter**
 - TTRPG-tuned assistant modes (world builder, narrative designer, encounter architect)
@@ -45,6 +46,8 @@ A Streamlit chatbot with a cleaner interface and support for both **OpenAI** and
 ## Next milestones
 
 See `ROADMAP.md` for phased evolution into a robust daily-use platform.
+
+For full implementation detail (World Bible, Prompt Forge engine, chat orchestration, and enterprise requirements), see `PRODUCT_SPEC.md`.
 
 
 ## Compatibility note
