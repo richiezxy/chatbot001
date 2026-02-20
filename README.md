@@ -1,19 +1,31 @@
-# 💬 Chatbot template
+# 💬 Multi-provider chatbot template
 
-A simple Streamlit app that shows how to build a chatbot using OpenAI's GPT-3.5.
+A Streamlit chatbot with a cleaner interface and support for both **OpenAI** and **OpenRouter**.
 
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://chatbot-template.streamlit.app/)
+## Features
+
+- Provider switcher (OpenAI / OpenRouter)
+- Configurable base URL and model
+- System prompt + temperature controls
+- Streaming assistant responses
+- Persistent chat history in session state
+- One-click clear conversation button
 
 ### How to run it on your own machine
 
 1. Install the requirements
 
-   ```
-   $ pip install -r requirements.txt
+   ```bash
+   pip install -r requirements.txt
    ```
 
 2. Run the app
 
+   ```bash
+   streamlit run streamlit_app.py
    ```
-   $ streamlit run streamlit_app.py
-   ```
+
+3. In the sidebar:
+   - Choose your provider.
+   - Add the matching API key.
+   - Optionally tune model, system prompt, and temperature.
