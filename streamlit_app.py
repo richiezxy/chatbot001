@@ -268,7 +268,7 @@ chat_tab, world_tab, prompt_tab, admin_tab, roadmap_tab = st.tabs(
 # -------------------------------
 with chat_tab:
     st.subheader("Conversation")
-        st.rerun()
+    st.rerun()
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
