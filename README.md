@@ -3,6 +3,18 @@
 A Streamlit project moving toward a **t3.chat-style** daily workspace for tabletop worldbuilding, image prompt design, and campaign operations.
 
 ## What this build now includes
+# 💬 Multi-provider chatbot template
+
+A Streamlit chatbot with a cleaner interface and support for both **OpenAI** and **OpenRouter**.
+
+## Features
+
+- Provider switcher (OpenAI / OpenRouter)
+- Configurable base URL and model
+- System prompt + temperature controls
+- Streaming assistant responses
+- Persistent chat history in session state
+- One-click clear conversation button
 
 - Multi-provider chat: **OpenAI** and **OpenRouter**
 - TTRPG-tuned assistant modes (world builder, narrative designer, encounter architect)
@@ -46,15 +58,7 @@ Recommended upgrade for best long-term support:
 ```bash
 pip install --upgrade openai
 ```
-
-## Verification before push
-
-Run the repeatable local verification script:
-
-```bash
-python verify_app.py
-```
-
-This checks:
-- `streamlit_app.py` syntax
-- OpenAI SDK compatibility surface (modern and/or legacy API presence)
+3. In the sidebar:
+   - Choose your provider.
+   - Add the matching API key.
+   - Optionally tune model, system prompt, and temperature.
